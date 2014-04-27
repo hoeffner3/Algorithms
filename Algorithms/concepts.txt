@@ -1,0 +1,173 @@
+
+- Add a counter to www.google.com to track the billionth user
+
+	1. Accumulatator: Add number of web requests and send to a timebound computing server. Add a random delay to report this stat so that the computing server has time to process requests over a period of time. 
+	2. Stat listener: Fetches the current stat data from a timebound computing server 
+
+	The timebound computing server (lets say 600 servers exist, each counts the request data for 6 seconds) and are roundrobined in 1 hr - it's job is to use the time it has to sort the requests timestamp wise. It also fetches data from the previous server in roundrobin when it finishes counting, and adds the current fetched data to this list. If it sees a crossover of a billion, it can very well know which transaction caused it. 
+	
+	
+- Distributed HashMap
+
+
+- Second Shortest PAth in a graph
+
+- Closet Points in a plane
+
+- Balancing an unbalanced tree
+
+- Map Reduce Concepts
+
+- Thread Pool
+
+-Content Aware Deduplication
+
+- Search Engine Indexing
+   Refer the wikipedia for this
+   
+- Resource Discovery in Crawling
+
+- Shortest path between regions in a graph
+
+- Parallel Breadth First Search Algorithm
+
+- Synchronize a linked list across multiple computers
+	
+	We can tackle this problem using a master for synchronization and N nodes for actual storage of the linked list. 
+
+	Every time a node wants to do something on the linked list (since we are using a linked list we can suppose the operations available are append on both ends/remove on both ends), it has first to acquire a lock which state is controlled by the master. 
+
+	This will work but won't allow for much concurrency as no parallel operations would be possible. 
+
+	If we want to allow parallel operations to occur, we can make the operations reported (marked as => below) to the master before they are actually performed on any node : 
+	Operation 1 - Node i => Append 3 to the linked list 
+	Operation 2 - Node j => Remove the top element of the linked list 
+
+	The master would allow the operation 1 and start propagating it to every N nodes. 
+	Then it would see the operation 2 and would not allow it as it is not compatible with operation 1 (add/delete on the same side cannot be done concurrently). 
+
+	Another sequence could be: 
+	Operation 1 - Node i => Append 3 to the linked list 
+	Operation 2 - Node j => Append 5 to the linked list 
+	
+	In that case, the master could allow each operation to be performed but would propagate operation 1 before it actually starts propagating operation 2. 
+
+	In my opinion, the key point here is to ask : 
+	- should we allow parallel operations and which ones ? if no, then a master lock will do fine 
+	- does it matter if the order of insertion/deletion is not respected ? (i.e. we can permute two consecutive append or two consecutive delete) If not, then we can allow for some leven of concurrency
+
+
+- Design Cache Server for a simple web application
+
+  You can design a cache server using a dynamic data structure like a double linked list. while you must be able to read the cache concurrently, only one thread or process must be able to write to it a time. this could be achieved by procuring specific read and write locks in the POSIX thread API.For cache eviction policy, LRU is a good choice and it can be implemented using counters.
+  
+  
+  	Cache managerThe cache manager provides the application interface to the cache itself. Classes and interfaces included in this package provide the interfaces required for adding, retrieving, and removing items and metadata to and from the cache.
+ 	Cache serviceThe cache service is responsible for managing cache metadata. The cache service can be deployed either in the same AppDomain as the cache manager or in a different process, depending on the required storage and its scope.
+	Cache storageThe cache storage separates the cache data store from the cache functional implementation. The cache storage handles insertion, retrieval, and deletion of cached items to and from the cache data store.
+
+	
+- Design a distributed system for storing a static set of (key,value) pairs and should serve user-queries(users provide a key, and system should return a the value).
+
+	We can have a master and a number of slave storage server with the replication factor of 3 synchronised by the master. When master gets the query, it evaluates a hash and returns the user the location handle of the slave storage server that actually has the data. The client can now go directly to the server holding the value of his requested key and get it. This works just like the google file system and scales to a huge number of queries per second. The main benefit is that the data never flows through the master, so the latency is very low.
+	
+- how you will design system for server and which will have many clients, all clients will keep of adding some words to system and server has to detect which words to accept, at the same time server will also keep on adding words.So which data structure you will use so that system will be efficient and fast.
+
+	The fact that multiple clients are present gets me to think that we will need locking mechanisms for access to the Memory.So,we can have a queue in which locking(with mutexes or semaphores etc.) is present.Clients add their words in the queue.The words for filtering are stored in hash table by hashing the word to be stored(something like Rabin karp algorithm requires,or maybe multiple hash functions for speeding up the matching).adding the words to the hash table by the server is convenient since only server is trying write access to the hash table.words are taken from queue and hashed through the function or functions for hashing and matched in the hash table. 
+
+	Time complexity: O(1) for hashing and searching and matching the input words.O(1) for adding the words to the hash table.O(1)+time waiting for lock for adding a word to queue. 
+
+
+- Design a logging system for an application server? see to it that Logging system you define does not include a large overhead in case of large loads to server ?
+
+	Writing the log entry each time it occur to the disk will be slow io. Instead, use in memory buffer, better if nvram to buffer them n flush them to disk given the rate it grows in the buffer. The buffer should be further divided into two parts, one to write new logs, the other half to get flush when it is full. Thus no locking to buffer is required.
+	
+- design a server architecture for serving Google maps images
+
+	Cache the maps in memory. 
+	Top level maps are replicated to at least one machine in a region. 
+	Low level maps are partitioned to different machines. 
+	Hot maps, such as new york city are replicated to more machines. 
+
+	the placement can be based on hash partition on the map location value; 
+	It can adopt Dynamo's architecture which you multicast query to several machines and return as lone as one machine returns.
+
+- How do you make sure an API does not leak memory?
+
+	A good API design should involve the following: 
+	1. No state management. Push all state management to client code. 
+	2. Idempotent. Same input will always provide the same output. 
+	3. No Transaction management. Again, push it to client code. 
+	4. Service oriented - meaning, provide a specific elemental service 
+
+	When you apply all these design principles, your API code will automatically become lean. From that perspective, everything you will do becomes 'disposable' - all objects and primitive variables that you will use to service a certain request will become disposable. 
+
+	Then comes the bloody internals. Ensure no loitering, reset your collections references to null etc. 
+
+	But I believe that a good overall design principle are must for eliminating conditions for memory leaks.
+
+
+- Given a large network of computers, each keeping log files of visited urls, find the top ten of the most visited urls. 
+(i.e. have many large <string (url) -> int (visits)> maps, calculate implicitly <string (url) -> int (sum of visits among all distributed maps), and get the top ten in the combined map)
+
+
+	Presuming a protocol exists that can ask three questions to each server: 
+
+	* the score of a single url 
+	* the top 10 
+	* the top n that satisfy score >= N 
+
+	We program a two pass solution like so: 
+
+	We denote the number of servers as S. 
+
+	[First pass] 
+	(1) Ask every server for its own top ten 
+
+	(2) merge the results. For all URLs in the merged set calculate correct values by asking 
+	all servers for their scores for each URL. Calculate a set of top ten from our sample. 
+
+	(3) pick score of the now tenth URL as the threshold that we try to beat 
+	in the second round. We denote the threshold as T. 
+
+	[Second pass] 
+	(4) Ask every server for all its top N that satisfy score >= T/S 
+
+	(5) Merge these bigger samples again as in step (2) 
+
+	(6) We now have the correct top ten with correct scores.
+	
+	
+
+- design a system to return an unique ID for each request. For most of requests, the ID value should increase as time goes, the system should handle 1000 requests per second at least. 
+timestamps alone is not valid since there might be multiple requests with same timestamps.
+
+	Thrift Server written in Scala
+	id is composed of:
+	time - 41 bits (millisecond precision w/ a custom epoch gives us 69 years)
+	configured machine id - 10 bits - gives us up to 1024 machines
+	sequence number - 12 bits - rolls over every 4096 per machine (with protection to avoid rollover in the same ms)
+	
+	
+- Design a Rubik's Cube, including backend database portion.
+
+
+- Design Short URL
+
+	Store full URLs in a database table. To get the shortened form, just get, say, the base 62 version of the ID of the URL's row in the table (62 = ten digits, 26 lowercase characters, 26 uppercase characters). The service itself would issue HTTP 302 redirects to avoid putting its own shortened link into the browser's history.
+	
+	
+- http://www.careercup.com/question?id=5105977028247552
+
+
+- How does trie handle scalability as opposed to hashtable? Assuming it is used for a dictionary. Sclability here should cover large size of input, running out of memory, or even running out of memory on multiple machines if distributed system is used.
+
+
+- The final question was just how to write a connection pool (i.e, a class that returns connections to the user, and if the user is done, returns them back to the pool)
+
+	Object Pool Pattern - http://www.javaworld.com/article/2076690/java-concurrency/build-your-own-objectpool-in-java-to-boost-app-speed.html
+	
+
+- Given a large file of integers, how to compress the file so that we can also do search efficiently?
+
+	http://www.cs.brandeis.edu/~dilant/cs175/%5BBen_Tripp%5D.pdf
